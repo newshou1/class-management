@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>班级信息管理系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa; color: #333; line-height: 1.6;
+        }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header {
+            background: linear-gradient(135deg, #1890ff, #096dd9); color: white;
+            padding: 20px; border-radius: 10px; margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+        }
+        .header h1 { font-size: 24px; margin-bottom: 10px; cursor: pointer; display: inline-block; }
+        .header h1:hover { opacity: 0.8; }
+        .user-info { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 14px; }
+        .btn {
+            background: #1890ff; color: white; border: none; padding: 10px 20px;
+            border-radius: 5px; cursor: pointer; font-size: 14px;
+        }
+        .btn:hover { background: #096dd9; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-danger { background: #ff4d4f; }
+        .btn-danger:hover { background: #cf1322; }
+        .btn-success { background: #52c41a; }
+        .btn-success:hover { background: #389e0d; }
+        .login-container {
+            max-width: 400px; margin: 100px auto; background: white;
+            padding: 40px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .login-container h2 { text-align: center; margin-bottom: 30px; color: #1890ff; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #666; font-size: 14px; }
+        .form-group input {
+            width: 100%; padding: 10px; border: 1px solid #d9d9d9;
+            border-radius: 5px; font-size: 14px;
+        }
+        .form-group input:focus { outline: none; border-color: #1890ff; box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2); }
+        .tabs {
+            display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;
+            background: white; padding: 15px; border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .tab {
+            padding: 10px 20px; background: #f5f7fa; border: 1px solid #d9d9d9;
+            border-radius: 5px; cursor: pointer; font-size: 14px;
+        }
+        .tab:hover { background: #e6f7ff; border-color: #1890ff; }
+        .tab.active { background: #1890ff; color: white; border-color: #1890ff; }
+        .content {
+            background: white; padding: 20px; border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); min-height: 400px;
+        }
+        .upload-area {
+            border: 2px dashed #d9d9d9; border-radius: 10px; padding: 40px;
+            text-align: center; margin-bottom: 20px; cursor: pointer;
+        }
+        .upload-area:hover { border-color: #1890ff; background: #e6f7ff; }
+        .file-list { margin-top: 20px; }
+        .file-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px; border-bottom: 1px solid #f0f0f0;
+        }
+        .file-item:hover { background: #f5f7fa; }
+        .file-info { display: flex; align-items: center; gap: 10px; flex: 1; }
+        .file-icon { font-size: 24px; }
+        .file-actions { display: flex; gap: 10px; }
+        .file-actions button { padding: 5px 15px; font-size: 12px; }
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5); z-index: 1000;
+        }
+        .modal.active { display: flex; justify-content: center; align-items: center; }
+        .modal-content {
+            background: white; padding: 30px; border-radius: 10px;
+            max-width: 90%; max-height: 90%; overflow-y: auto; width: 800px;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .close-btn { font-size: 24px; cursor: pointer; color: #999; }
+        .close-btn:hover { color: #333; }
+        .table-preview { overflow-x: auto; }
+        .table-preview table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .table-preview th, .table-preview td { border: 1px solid #d9d9d9; padding: 8px; text-align: left; }
+        .table-preview th { background: #f5f7fa; font-weight: bold; }
+        .discipline-form { display: flex; flex-direction: column; gap: 15px; }
+        .discipline-form input, .discipline-form textarea, .discipline-form select {
+            padding: 10px; border: 1px solid #d9d9d9; border-radius: 5px; font-size: 14px;
+        }
+        .discipline-form textarea { min-height: 100px; resize: vertical; }
+        .discipline-list { margin-top: 20px; }
+        .discipline-item { padding: 15px; border-bottom: 1px solid #f0f0f0; }
+        .discipline-item:hover { background: #f5f7fa; }
+        .discipline-item h4 { margin-bottom: 5px; color: #1890ff; }
+        .discipline-item p { font-size: 14px; color: #666; margin-bottom: 5px; }
+        .discipline-item .photos { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        .discipline-item .photos img {
+            width: 100px; height: 100px; object-fit: cover;
+            border-radius: 5px; cursor: pointer;
+        }
+        .loading { text-align: center; padding: 40px; color: #999; }
+        .message { padding: 10px 20px; border-radius: 5px; margin-bottom: 20px; display: none; }
+        .message.success { background: #f6ffed; border: 1px solid #b7eb8f; color: #52c41a; }
+        .message.error { background: #fff2e8; border: 1px solid #ffbb96; color: #ff4d4f; }
+        .message.active { display: block; }
+        .login-container .message { margin-bottom: 15px; text-align: center; }
+        @media (max-width: 768px) {
+            .container { padding: 10px; }
+            .header h1 { font-size: 20px; }
+            .tabs { padding: 10px; }
+            .tab { padding: 8px 15px; font-size: 13px; }
+            .content { padding: 15px; }
+            .file-item { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .file-actions { width: 100%; justify-content: flex-end; }
+            .modal-content { padding: 20px; width: 95%; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="login-container" id="loginContainer">
+            <div class="message" id="authMessage"></div>
+            <h2>班级信息管理系统</h2>
+            <div class="form-group">
+                <label>班级账号</label>
+                <input type="text" id="username" placeholder="请输入班级账号">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="password" placeholder="请输入密码">
+            </div>
+            <div id="confirmPasswordGroup" class="form-group" style="display: none;">
+                <label>确认密码</label>
+                <input type="password" id="confirmPassword" placeholder="请再次输入密码">
+            </div>
+            <button class="btn" style="width: 100%;" id="loginBtn" onclick="login()">登录</button>
+            <button class="btn btn-success" style="width: 100%; display: none; margin-top: 10px;" id="registerBtn" onclick="register()">注册</button>
+            <p style="text-align: center; margin-top: 15px; font-size: 14px; color: #666;">
+                <span id="switchText">还没有账号？</span>
+                <a href="javascript:void(0)" id="switchLink" onclick="toggleAuthMode()" style="color: #1890ff;">注册新班级</a>
+            </p>
+        </div>
+
+        <div class="container" id="mainContainer" style="display: none;">
+            <div class="header">
+                <h1 id="className" onclick="editClassName()">XXX班信息管理系统</h1>
+                <div class="user-info">
+                    <span id="currentUser"></span>
+                    <button class="btn btn-danger" onclick="logout()">退出登录</button>
+                </div>
+            </div>
+            <div class="tabs" id="tabs"></div>
+            <div class="content" id="content">
+                <div class="message" id="message"></div>
+                <div id="tabContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="previewModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>文件预览</h3>
+                <span class="close-btn" onclick="closePreview()">&times;</span>
+            </div>
+            <div class="table-preview" id="previewContent"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="imageModal">
+        <div class="modal-content" style="width: auto; max-width: 90%;">
+            <div class="modal-header">
+                <h3>图片预览</h3>
+                <span class="close-btn" onclick="closeImagePreview()">&times;</span>
+            </div>
+            <img id="previewImage" style="max-width: 100%; max-height: 80vh;">
+        </div>
+    </div>
+
+    <script>
+        const EMAIL_SUFFIX = '@class.local';
+        const GOTRUE_URL = '/.netlify/identity';
+        const API_FILES = '/api/files';
+        const API_DISCIPLINE = '/api/discipline';
+
+        let authState = null; // { access_token, refresh_token, user }
+        let currentTab = 0;
+        const tabs = [
+            '基本信息表', '花名册', '课程表', '座次表',
+            '班干部任职与代课老师信息表', '班级值日表', '宿舍名片', '宿舍值日表',
+            '费用台账', '班级违纪记录'
+        ];
+
+        // === 工具函数 ===
+
+        function toEmail(username) { return username + EMAIL_SUFFIX; }
+        function toUsername(email) { return email ? email.replace(EMAIL_SUFFIX, '') : ''; }
+
+        function getAuthHeader() {
+            return authState ? { 'Authorization': `Bearer ${authState.access_token}` } : {};
+        }
+
+        async function apiFetch(url, options = {}) {
+            const headers = { ...getAuthHeader(), ...(options.headers || {}) };
+            const res = await fetch(url, { ...options, headers });
+            if (res.status === 401) {
+                showMessage('登录已过期，请重新登录', 'error');
+                handleLogout();
+                return null;
+            }
+            return res;
+        }
+
+        function showMessage(text, type) {
+            const mainContainer = document.getElementById('mainContainer');
+            const isMainVisible = mainContainer.style.display !== 'none';
+            const message = isMainVisible
+                ? document.getElementById('message')
+                : document.getElementById('authMessage');
+            if (message) {
+                message.textContent = text;
+                message.className = `message ${type} active`;
+                setTimeout(() => message.classList.remove('active'), 3000);
+            }
+        }
+
+        function saveAuth() {
+            if (authState) {
+                localStorage.setItem('class_auth', JSON.stringify(authState));
+            } else {
+                localStorage.removeItem('class_auth');
+            }
+        }
+
+        function loadAuth() {
+            try {
+                const data = localStorage.getItem('class_auth');
+                return data ? JSON.parse(data) : null;
+            } catch { return null; }
+        }
+
+        // === 认证 ===
+
+        let isRegisterMode = false;
+
+        function toggleAuthMode() {
+            isRegisterMode = !isRegisterMode;
+            document.getElementById('confirmPasswordGroup').style.display = isRegisterMode ? 'block' : 'none';
+            document.getElementById('loginBtn').style.display = isRegisterMode ? 'none' : 'block';
+            document.getElementById('registerBtn').style.display = isRegisterMode ? 'block' : 'none';
+            document.getElementById('switchText').textContent = isRegisterMode ? '已有账号？' : '还没有账号？';
+            document.getElementById('switchLink').textContent = isRegisterMode ? '去登录' : '注册新班级';
+        }
+
+        async function register() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (!username || !password) { showMessage('请输入账号和密码', 'error'); return; }
+            if (password !== confirmPassword) { showMessage('两次输入的密码不一致', 'error'); return; }
+            if (password.length < 8) { showMessage('密码长度不能少于8位', 'error'); return; }
+
+            const btn = document.getElementById('registerBtn');
+            btn.disabled = true; btn.textContent = '注册中...';
+
+            try {
+                const res = await fetch(`${GOTRUE_URL}/signup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: toEmail(username), password })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.msg || data.error_description || data.message || '注册失败');
+
+                // 注册后自动登录
+                const loginRes = await fetch(`${GOTRUE_URL}/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ grant_type: 'password', email: toEmail(username), password })
+                });
+                const loginData = await loginRes.json();
+                if (!loginRes.ok) {
+                    showMessage('注册成功，请登录', 'success');
+                    toggleAuthMode();
+                    return;
+                }
+                authState = { access_token: loginData.access_token, refresh_token: loginData.refresh_token, user: { id: loginData.user.id, email: loginData.user.email } };
+                saveAuth();
+                showMainContainer();
+                showMessage('注册成功', 'success');
+            } catch (error) {
+                showMessage('注册失败: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = '注册';
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) { showMessage('请输入账号和密码', 'error'); return; }
+
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true; btn.textContent = '登录中...';
+
+            try {
+                const res = await fetch(`${GOTRUE_URL}/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ grant_type: 'password', email: toEmail(username), password })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error_description || data.msg || '登录失败');
+
+                authState = { access_token: data.access_token, refresh_token: data.refresh_token, user: { id: data.user.id, email: data.user.email } };
+                saveAuth();
+                showMainContainer();
+                showMessage('登录成功', 'success');
+            } catch (error) {
+                showMessage('登录失败: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = '登录';
+            }
+        }
+
+        async function logout() {
+            try {
+                await fetch(`${GOTRUE_URL}/logout`, {
+                    method: 'POST',
+                    headers: getAuthHeader()
+                });
+            } catch (e) { console.error('logout error', e); }
+            handleLogout();
+        }
+
+        function handleLogout() {
+            authState = null;
+            saveAuth();
+            document.getElementById('loginContainer').style.display = 'block';
+            document.getElementById('mainContainer').style.display = 'none';
+        }
+
+        // === 初始化 ===
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            const saved = loadAuth();
+            if (saved && saved.access_token) {
+                try {
+                    const res = await fetch(`${GOTRUE_URL}/user`, {
+                        headers: { 'Authorization': `Bearer ${saved.access_token}` }
+                    });
+                    if (res.ok) {
+                        const user = await res.json();
+                        authState = { ...saved, user: { id: user.id, email: user.email } };
+                        showMainContainer();
+                    } else {
+                        // token过期，尝试刷新
+                        if (saved.refresh_token) {
+                            const refreshRes = await fetch(`${GOTRUE_URL}/token`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: saved.refresh_token })
+                            });
+                            if (refreshRes.ok) {
+                                const data = await refreshRes.json();
+                                authState = { access_token: data.access_token, refresh_token: data.refresh_token, user: { id: data.user.id, email: data.user.email } };
+                                saveAuth();
+                                showMainContainer();
+                            } else {
+                                handleLogout();
+                            }
+                        } else {
+                            handleLogout();
+                        }
+                    }
+                } catch (e) {
+                    console.error('auth check failed', e);
+                }
+            }
+        });
+
+        // === 主界面 ===
+
+        function showMainContainer() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('mainContainer').style.display = 'block';
+            document.getElementById('currentUser').textContent = `当前班级: ${toUsername(authState.user.email)}`;
+            loadClassName();
+            renderTabs();
+            showTab(0);
+        }
+
+        function loadClassName() {
+            const saved = localStorage.getItem('class_name_' + authState.user.id);
+            const name = saved || toUsername(authState.user.email);
+            document.getElementById('className').textContent = name + '班信息管理系统';
+        }
+
+        function editClassName() {
+            const current = document.getElementById('className').textContent;
+            const newName = prompt('请输入新的班级名称:', current);
+            if (newName && newName !== current) {
+                document.getElementById('className').textContent = newName;
+                localStorage.setItem('class_name_' + authState.user.id, newName.replace('班信息管理系统', ''));
+                showMessage('班级名称已更新', 'success');
+            }
+        }
+
+        function renderTabs() {
+            const tabsContainer = document.getElementById('tabs');
+            tabsContainer.innerHTML = '';
+            tabs.forEach((tab, index) => {
+                const el = document.createElement('div');
+                el.className = 'tab' + (index === currentTab ? ' active' : '');
+                el.textContent = tab;
+                el.onclick = () => showTab(index);
+                tabsContainer.appendChild(el);
+            });
+        }
+
+        function showTab(index) {
+            currentTab = index;
+            renderTabs();
+            if (index === 9) {
+                renderDisciplineTab();
+            } else {
+                renderFileTab(index);
+            }
+        }
+
+        // === 文件管理 ===
+
+        function renderFileTab(index) {
+            document.getElementById('tabContent').innerHTML = `
+                <div class="upload-area" onclick="document.getElementById('fileInput${index}').click()">
+                    <p>点击上传文件</p>
+                    <p style="font-size: 12px; color: #999; margin-top: 10px;">支持 .doc/.docx/.xlsx/.xls/.pdf/.jpg/.png 等格式</p>
+                </div>
+                <input type="file" id="fileInput${index}" style="display: none;" onchange="uploadFile(${index})" multiple>
+                <div class="file-list" id="fileList${index}"><div class="loading">加载中...</div></div>
+            `;
+            loadFiles(index);
+        }
+
+        async function uploadFile(tabIndex) {
+            const fileInput = document.getElementById(`fileInput${tabIndex}`);
+            const files = fileInput.files;
+            if (files.length === 0) return;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                try {
+                    showMessage(`正在上传 ${file.name}...`, 'success');
+
+                    const reader = new FileReader();
+                    const base64Promise = new Promise((resolve) => {
+                        reader.onload = () => resolve(reader.result.split(',')[1]);
+                        reader.readAsDataURL(file);
+                    });
+                    const fileData = await base64Promise;
+
+                    const res = await apiFetch(API_FILES, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            tabIndex,
+                            fileName: file.name,
+                            fileType: file.type,
+                            fileSize: file.size,
+                            fileData,
+                            uploadedBy: toUsername(authState.user.email)
+                        })
+                    });
+                    if (!res) return;
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || '上传失败');
+
+                    showMessage(`${file.name} 上传成功`, 'success');
+                } catch (error) {
+                    showMessage(`上传失败: ${error.message}`, 'error');
+                }
+            }
+
+            fileInput.value = '';
+            loadFiles(tabIndex);
+        }
+
+        async function loadFiles(tabIndex) {
+            const container = document.getElementById(`fileList${tabIndex}`);
+            try {
+                const res = await apiFetch(`${API_FILES}?tabIndex=${tabIndex}`);
+                if (!res) return;
+                const files = await res.json();
+                if (!res.ok) throw new Error(files.error || '加载失败');
+
+                if (files.length === 0) {
+                    container.innerHTML = '<div class="loading">暂无文件</div>';
+                    return;
+                }
+                container.innerHTML = '';
+                files.forEach(file => {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    const icon = getFileIcon(file.fileType);
+                    item.innerHTML = `
+                        <div class="file-info">
+                            <div class="file-icon">${icon}</div>
+                            <div>
+                                <div style="font-weight: bold;">${escHtml(file.fileName)}</div>
+                                <div style="font-size: 12px; color: #999;">
+                                    上传者: ${escHtml(file.uploadedBy)} |
+                                    大小: ${formatFileSize(file.fileSize)} |
+                                    时间: ${new Date(file.uploadedAt).toLocaleString()}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="file-actions">
+                            <button class="btn" onclick="downloadFile('${file.id}', ${file.tabIndex}, '${escAttr(file.fileName)}')">下载</button>
+                            ${isPreviewable(file.fileType) ? `<button class="btn" onclick="previewFile('${file.id}', ${file.tabIndex})">预览</button>` : ''}
+                            <button class="btn btn-danger" onclick="deleteFile(${file.tabIndex}, '${file.id}')">删除</button>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+            } catch (error) {
+                container.innerHTML = `<div class="loading">加载失败: ${error.message}</div>`;
+            }
+        }
+
+        async function downloadFile(fileId, tabIndex, fileName) {
+            try {
+                const res = await apiFetch(`${API_FILES}?fileId=${encodeURIComponent(fileId)}&tabIndex=${tabIndex}`);
+                if (!res) return;
+                if (!res.ok) throw new Error('下载失败');
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = fileName;
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                showMessage(`下载失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function previewFile(fileId, tabIndex) {
+            try {
+                const res = await apiFetch(`${API_FILES}?fileId=${encodeURIComponent(fileId)}&tabIndex=${tabIndex}`);
+                if (!res) return;
+                if (!res.ok) throw new Error('预览失败');
+                const arrayBuffer = await res.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const html = XLSX.utils.sheet_to_html(firstSheet);
+                document.getElementById('previewContent').innerHTML = html;
+                document.getElementById('previewModal').classList.add('active');
+            } catch (error) {
+                showMessage(`预览失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteFile(tabIndex, fileId) {
+            if (!confirm('确定要删除这个文件吗？')) return;
+            try {
+                const res = await apiFetch(API_FILES, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fileId, tabIndex })
+                });
+                if (!res) return;
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || '删除失败');
+                showMessage('删除成功', 'success');
+                loadFiles(tabIndex);
+            } catch (error) {
+                showMessage(`删除失败: ${error.message}`, 'error');
+            }
+        }
+
+        // === 违纪记录 ===
+
+        let uploadedPhotos = [];
+
+        function renderDisciplineTab() {
+            uploadedPhotos = [];
+            document.getElementById('tabContent').innerHTML = `
+                <div class="discipline-form">
+                    <input type="text" id="disciplineName" placeholder="学生姓名">
+                    <input type="datetime-local" id="disciplineTime" style="flex: 1;">
+                    <textarea id="disciplineContent" placeholder="违纪内容"></textarea>
+                    <div>
+                        <input type="file" id="disciplinePhotos" accept="image/*" multiple style="display: none;" onchange="handlePhotoUpload()">
+                        <button class="btn" onclick="document.getElementById('disciplinePhotos').click()">上传照片</button>
+                        <div id="photoPreview" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
+                    </div>
+                    <button class="btn btn-success" onclick="addDisciplineRecord()">添加记录</button>
+                    <button class="btn" onclick="exportDisciplineRecords()">导出为Excel</button>
+                </div>
+                <div class="discipline-list" id="disciplineList"><div class="loading">加载中...</div></div>
+            `;
+            loadDisciplineRecords();
+        }
+
+        function handlePhotoUpload() {
+            const files = document.getElementById('disciplinePhotos').files;
+            for (let i = 0; i < files.length; i++) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    uploadedPhotos.push(e.target.result);
+                    renderPhotoPreview();
+                };
+                reader.readAsDataURL(files[i]);
+            }
+            document.getElementById('disciplinePhotos').value = '';
+        }
+
+        function renderPhotoPreview() {
+            const container = document.getElementById('photoPreview');
+            if (!container) return;
+            container.innerHTML = '';
+            uploadedPhotos.forEach((photo, index) => {
+                const wrap = document.createElement('div');
+                wrap.style.cssText = 'position: relative; display: inline-block;';
+                const img = document.createElement('img');
+                img.src = photo;
+                img.style.cssText = 'width: 100px; height: 100px; object-fit: cover; border-radius: 5px; cursor: pointer;';
+                img.onclick = () => showImagePreview(photo);
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '\u00d7';
+                removeBtn.className = 'btn btn-danger';
+                removeBtn.style.cssText = 'position: absolute; top: -5px; right: -5px; padding: 2px 5px; font-size: 10px;';
+                removeBtn.onclick = (e) => { e.stopPropagation(); uploadedPhotos.splice(index, 1); renderPhotoPreview(); };
+                wrap.appendChild(img);
+                wrap.appendChild(removeBtn);
+                container.appendChild(wrap);
+            });
+        }
+
+        async function addDisciplineRecord() {
+            const name = document.getElementById('disciplineName').value.trim();
+            const time = document.getElementById('disciplineTime').value;
+            const content = document.getElementById('disciplineContent').value.trim();
+            if (!name || !time || !content) { showMessage('请填写完整信息', 'error'); return; }
+
+            try {
+                const res = await apiFetch(API_DISCIPLINE, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        studentName: name,
+                        disciplineTime: time,
+                        disciplineContent: content,
+                        photos: uploadedPhotos,
+                        createdBy: toUsername(authState.user.email)
+                    })
+                });
+                if (!res) return;
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || '添加失败');
+
+                showMessage('记录添加成功', 'success');
+                document.getElementById('disciplineName').value = '';
+                document.getElementById('disciplineTime').value = '';
+                document.getElementById('disciplineContent').value = '';
+                uploadedPhotos = [];
+                renderPhotoPreview();
+                loadDisciplineRecords();
+            } catch (error) {
+                showMessage(`添加失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadDisciplineRecords() {
+            const container = document.getElementById('disciplineList');
+            try {
+                const res = await apiFetch(API_DISCIPLINE);
+                if (!res) return;
+                const records = await res.json();
+                if (!res.ok) throw new Error(records.error || '加载失败');
+
+                if (records.length === 0) {
+                    container.innerHTML = '<div class="loading">暂无记录</div>';
+                    return;
+                }
+                container.innerHTML = '';
+                records.forEach(record => {
+                    const item = document.createElement('div');
+                    item.className = 'discipline-item';
+                    let photosHtml = '';
+                    if (record.photos && record.photos.length > 0) {
+                        photosHtml = '<div class="photos">' + record.photos.map(p =>
+                            `<img src="${p}" onclick="showImagePreview(this.src)">`
+                        ).join('') + '</div>';
+                    }
+                    item.innerHTML = `
+                        <h4>${escHtml(record.studentName)}</h4>
+                        <p>时间: ${new Date(record.disciplineTime).toLocaleString()}</p>
+                        <p>内容: ${escHtml(record.disciplineContent)}</p>
+                        <p style="font-size: 12px; color: #999;">记录者: ${escHtml(record.createdBy)} | 记录时间: ${new Date(record.createdAt).toLocaleString()}</p>
+                        ${photosHtml}
+                        <button class="btn btn-danger" style="margin-top: 10px;" onclick="deleteDisciplineRecord('${record.id}')">删除</button>
+                    `;
+                    container.appendChild(item);
+                });
+            } catch (error) {
+                container.innerHTML = `<div class="loading">加载失败: ${error.message}</div>`;
+            }
+        }
+
+        async function deleteDisciplineRecord(recordId) {
+            if (!confirm('确定要删除这条记录吗？')) return;
+            try {
+                const res = await apiFetch(API_DISCIPLINE, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ recordId })
+                });
+                if (!res) return;
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || '删除失败');
+                showMessage('删除成功', 'success');
+                loadDisciplineRecords();
+            } catch (error) {
+                showMessage(`删除失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function exportDisciplineRecords() {
+            try {
+                const res = await apiFetch(API_DISCIPLINE);
+                if (!res) return;
+                const records = await res.json();
+                if (!res.ok) throw new Error(records.error || '导出失败');
+
+                if (records.length === 0) { showMessage('暂无记录可导出', 'error'); return; }
+
+                const exportData = records.map(r => ({
+                    '学生姓名': r.studentName,
+                    '违纪时间': new Date(r.disciplineTime).toLocaleString(),
+                    '违纪内容': r.disciplineContent,
+                    '记录者': r.createdBy,
+                    '记录时间': new Date(r.createdAt).toLocaleString(),
+                    '照片数量': r.photos ? r.photos.length : 0
+                }));
+                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, '违纪记录');
+                XLSX.writeFile(workbook, '班级违纪记录.xlsx');
+                showMessage('导出成功', 'success');
+            } catch (error) {
+                showMessage(`导出失败: ${error.message}`, 'error');
+            }
+        }
+
+        // === 通用工具 ===
+
+        function closePreview() { document.getElementById('previewModal').classList.remove('active'); }
+        function showImagePreview(src) { document.getElementById('previewImage').src = src; document.getElementById('imageModal').classList.add('active'); }
+        function closeImagePreview() { document.getElementById('imageModal').classList.remove('active'); }
+
+        function getFileIcon(fileType) {
+            if (!fileType) return '📁';
+            if (fileType.includes('spreadsheet') || fileType.includes('excel')) return '📊';
+            if (fileType.includes('document') || fileType.includes('word')) return '📄';
+            if (fileType.includes('pdf')) return '📕';
+            if (fileType.includes('image')) return '🖼️';
+            return '📁';
+        }
+
+        function isPreviewable(fileType) {
+            return fileType && (fileType.includes('spreadsheet') || fileType.includes('excel'));
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function escHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function escAttr(str) {
+            if (!str) return '';
+            return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+    </script>
+</body>
+</html>
